@@ -234,6 +234,25 @@ table.t{width:100%;border-collapse:collapse;min-width:520px}
 .anot-txt{flex:1;font-size:13.5px;line-height:1.5}
 .anot-rm{background:transparent;border:none;color:var(--ink-soft);cursor:pointer;font-size:16px}
 .anot-empty{color:var(--ink-soft);font-size:13px;padding:22px;text-align:center;border:1px dashed var(--line);border-radius:9px}
+.pcard{position:relative}
+.pcard-del{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:6px;border:1px solid var(--line);background:var(--card2);color:var(--ink-soft);cursor:pointer;font-size:15px;line-height:1;opacity:0;transition:opacity .15s,background .2s,color .2s}
+.pcard:hover .pcard-del{opacity:1}
+.pcard-del:hover{background:rgba(229,113,95,.16);color:var(--danger);border-color:var(--danger)}
+.proj-nome{font-family:'Sora';font-weight:600;font-size:22px;background:transparent;border:none;color:var(--ink);width:100%;padding:2px 4px;border-radius:6px;letter-spacing:-.01em}
+.proj-nome:hover,.proj-nome:focus{background:var(--card2)}
+.proj-nome:focus,.proj-cli:focus{outline:none;box-shadow:0 0 0 2px rgba(111,191,224,.3)}
+.proj-cli{font-family:'Inter';font-size:13px;background:transparent;border:none;color:var(--ink-soft);width:100%;padding:3px 4px;margin-top:2px;border-radius:6px}
+.proj-cli:hover{background:var(--card2)}
+.cat-add{display:flex;gap:8px;align-items:end;flex-wrap:wrap;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:12px;margin-bottom:14px;backdrop-filter:blur(12px)}
+.cat-add .fld{display:flex;flex-direction:column;gap:4px}
+.cat-add label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.cat-add .inp{font-family:'Inter';font-size:13px;border:1px solid var(--line);padding:7px 9px;background:var(--card2);color:var(--ink);border-radius:6px;min-width:120px}
+.cat-add .inp:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(111,191,224,.16)}
+.cat-in{font-family:'Inter';font-size:12.5px;background:transparent;border:1px solid transparent;color:var(--ink);padding:4px 6px;border-radius:4px;width:100%;min-width:70px}
+.cat-in.model{font-family:'IBM Plex Mono';color:var(--primary-deep)}
+.cat-in:focus{outline:none;border-color:var(--primary);background:var(--card2)}
+.cat-rm{background:transparent;border:none;color:var(--ink-soft);cursor:pointer;font-size:15px}
+.cat-rm:hover{color:var(--danger)}
 .flagbadge{font-family:'IBM Plex Mono';font-size:11px;color:var(--warn);border:1px solid var(--warn);border-radius:4px;padding:0 5px;margin-left:8px}
 /* --- agenda + offline --- */
 .ag-add{display:grid;grid-template-columns:1.2fr 1.2fr 1fr .9fr .7fr auto;gap:8px;align-items:end;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:12px;margin-bottom:16px;backdrop-filter:blur(12px)}
@@ -403,17 +422,50 @@ function Relatorios({ ambientes, cond }) {
   </>);
 }
 
-const CAT_UE = [["RXYQ12BTL(G)", "Daikin", "VRV IV", 114700, 39], ["RXYQ16BTL(G)", "Daikin", "VRV IV", 152500, 52], ["RXYQ20BTL(G)", "Daikin", "VRV IV", 191100, 64], ["ARUM200LTE5", "LG", "Multi V 5", 191500, 64]];
-function Catalogo() {
+const CAT_SEED = [
+  { id: "s1", tipo: "ue", fabricante: "Daikin", linha: "VRV IV", modelo: "RXYQ12BTL(G)", cap: 114700, maxUI: 39 },
+  { id: "s2", tipo: "ue", fabricante: "Daikin", linha: "VRV IV", modelo: "RXYQ16BTL(G)", cap: 152500, maxUI: 52 },
+  { id: "s3", tipo: "ue", fabricante: "LG", linha: "Multi V 5", modelo: "ARUM200LTE5", cap: 191500, maxUI: 64 },
+  { id: "s4", tipo: "ui", fabricante: "Daikin", linha: "Cassete 4 vias", modelo: "FXFSQ40AVM", cap: 13600, maxUI: 0 },
+  { id: "s5", tipo: "ui", fabricante: "Daikin", linha: "Cassete 4 vias", modelo: "FXFSQ63AVM", cap: 21500, maxUI: 0 },
+];
+function Catalogo({ catalogo, setCatalogo }) {
   const [t, setT] = useState("ue");
+  const [novo, setNovo] = useState({ fabricante: "", linha: "", modelo: "", cap: "", maxUI: "" });
+  const lista = catalogo.filter((c) => c.tipo === t);
+  const setN = (k) => (e) => setNovo({ ...novo, [k]: e.target.value });
+  const add = () => {
+    if (!novo.modelo.trim()) return;
+    setCatalogo([...catalogo, { id: Math.random().toString(36).slice(2), tipo: t, fabricante: novo.fabricante.trim() || "—", linha: novo.linha.trim() || "—", modelo: novo.modelo.trim(), cap: num(novo.cap), maxUI: t === "ue" ? num(novo.maxUI) : 0 }]);
+    setNovo({ fabricante: "", linha: "", modelo: "", cap: "", maxUI: "" });
+  };
+  const upd = (id, k, v) => setCatalogo(catalogo.map((c) => c.id === id ? { ...c, [k]: (k === "cap" || k === "maxUI") ? num(v) : v } : c));
+  const rm = (id) => setCatalogo(catalogo.filter((c) => c.id !== id));
   return (<>
     <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
       <button className={"btn " + (t === "ue" ? "pri" : "gh")} onClick={() => setT("ue")}>Condensadoras</button>
       <button className={"btn " + (t === "ui" ? "pri" : "gh")} onClick={() => setT("ui")}>Evaporadoras</button>
     </div>
+    <div className="cat-add">
+      <div className="fld"><label>Fabricante</label><input className="inp" value={novo.fabricante} onChange={setN("fabricante")} placeholder="Daikin, LG…" /></div>
+      <div className="fld"><label>Linha</label><input className="inp" value={novo.linha} onChange={setN("linha")} placeholder="VRV IV, Multi V…" /></div>
+      <div className="fld"><label>Modelo</label><input className="inp" value={novo.modelo} onChange={setN("modelo")} placeholder="RXYQ12…" /></div>
+      <div className="fld"><label>Cap. (BTU/h)</label><input className="inp" style={{ minWidth: 110 }} value={novo.cap} onChange={setN("cap")} /></div>
+      {t === "ue" && <div className="fld"><label>Máx UIs</label><input className="inp" style={{ minWidth: 80 }} value={novo.maxUI} onChange={setN("maxUI")} /></div>}
+      <button className="btn pri" onClick={add}>+ Cadastrar</button>
+    </div>
     <div className="tw"><table className="t">
-      <thead><tr><th>Modelo</th><th>Fabr.</th><th>Linha</th><th>Cap. (BTU/h)</th><th>Máx UIs</th></tr></thead>
-      <tbody>{(t === "ue" ? CAT_UE : CAT.map((c) => [c[0] + "AVM", "Daikin", "Cassete 4 vias", c[1], "—"])).map((r) => <tr key={r[0]}><td className="model">{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{fmt(r[3])}</td><td>{r[4]}</td></tr>)}</tbody>
+      <thead><tr><th>Modelo</th><th>Fabr.</th><th>Linha</th><th>Cap. (BTU/h)</th>{t === "ue" && <th>Máx UIs</th>}<th></th></tr></thead>
+      <tbody>{lista.length === 0 ? (<tr><td colSpan={t === "ue" ? 6 : 5} style={{ color: "var(--ink-soft)", padding: 18 }}>Nenhum equipamento cadastrado nesta aba. Adicione acima.</td></tr>) : lista.map((c) => (
+        <tr key={c.id}>
+          <td><input className="cat-in model" value={c.modelo} onChange={(e) => upd(c.id, "modelo", e.target.value)} /></td>
+          <td><input className="cat-in" value={c.fabricante} onChange={(e) => upd(c.id, "fabricante", e.target.value)} /></td>
+          <td><input className="cat-in" value={c.linha} onChange={(e) => upd(c.id, "linha", e.target.value)} /></td>
+          <td><input className="cat-in" value={c.cap} onChange={(e) => upd(c.id, "cap", e.target.value)} /></td>
+          {t === "ue" && <td><input className="cat-in" value={c.maxUI} onChange={(e) => upd(c.id, "maxUI", e.target.value)} /></td>}
+          <td><button className="cat-rm" onClick={() => rm(c.id)}>×</button></td>
+        </tr>
+      ))}</tbody>
     </table></div>
   </>);
 }
@@ -762,6 +814,7 @@ export default function App() {
   const [fotos, setFotos] = useState({});
   const [tema, setTema] = useState("dark");
   const [online, setOnline] = useState(true);
+  const [catalogo, setCatalogo] = useState(CAT_SEED);
   const [visitas, setVisitas] = useState([
     { id: "v1", obra: "Fazenda Boa Vista", tipo: "medicao", data: "2026-08-27", hora: "09:00" },
     { id: "v2", obra: "Cobertura Vila Nova", tipo: "visita", data: "2026-08-27", hora: "14:30" },
@@ -793,6 +846,7 @@ export default function App() {
           if (d.anotacoes) setAnotacoes(d.anotacoes);
           if (d.visitas) setVisitas(d.visitas);
           if (d.fotos) setFotos(d.fotos);
+          if (d.catalogo) setCatalogo(d.catalogo);
         }
       } catch (e) { /* estado inicial */ }
       if (alive) setLogado(true);
@@ -804,16 +858,27 @@ export default function App() {
   useEffect(() => {
     if (!logado) return;
     const t = setTimeout(() => {
-      supabase.from("app_estado").upsert({ org: "projectar", dados: { projetos, ambientesByProj, anotacoes, visitas, fotos }, updated_at: new Date().toISOString() });
+      supabase.from("app_estado").upsert({ org: "projectar", dados: { projetos, ambientesByProj, anotacoes, visitas, fotos, catalogo }, updated_at: new Date().toISOString() });
     }, 900);
     return () => clearTimeout(t);
-  }, [projetos, ambientesByProj, anotacoes, visitas, fotos, logado]);
+  }, [projetos, ambientesByProj, anotacoes, visitas, fotos, catalogo, logado]);
   const proj = projetos.find((p) => p.id === projId);
   const ambientes = (proj && ambientesByProj[proj.id]) || [];
   const setAmbientes = (nl) => { if (proj) setAmbientesByProj((prev) => ({ ...prev, [proj.id]: typeof nl === "function" ? nl(prev[proj.id] || []) : nl })); };
   const totalProj = ambientes.reduce((s, a) => s + calc(a, COND).btu, 0);
 
-  const abrir = (p) => { if (p.editavel) { setProjId(p.id); setScreen("projeto"); setAba("ambientes"); setSelId((ambientesByProj[p.id] || [])[0]?.id || ""); } };
+  const abrir = (p) => { setProjId(p.id); setScreen("projeto"); setAba("ambientes"); setSelId((ambientesByProj[p.id] || [])[0]?.id || ""); };
+  const novoProjeto = () => {
+    const id = "p" + Date.now();
+    setProjetos((ps) => [{ id, nome: "Novo projeto", codigo: "OBRA-" + String(Date.now()).slice(-4), cliente: "", local: "", status: "rascunho", editavel: true }, ...ps]);
+    setProjId(id); setScreen("projeto"); setAba("ambientes"); setSelId("");
+  };
+  const excluirProjeto = (id) => {
+    setProjetos((ps) => ps.filter((p) => p.id !== id));
+    setAmbientesByProj((m) => { const n = { ...m }; delete n[id]; return n; });
+    setAnotacoes((m) => { const n = { ...m }; delete n[id]; return n; });
+  };
+  const updProjeto = (id, campo, valor) => setProjetos((ps) => ps.map((p) => p.id === id ? { ...p, [campo]: valor } : p));
 
   if (!logado) return (<div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#0a1b2e", color: "#8ba6bf", fontFamily: "system-ui" }}>Carregando…</div>);
 
@@ -835,18 +900,18 @@ export default function App() {
 
     <div className="main">
       {screen === "projetos" && (<>
-        <div className="top"><div className="h1">Projetos</div><button className="btn pri">+ Novo projeto</button></div>
+        <div className="top"><div className="h1">Projetos</div><button className="btn pri" onClick={novoProjeto}>+ Novo projeto</button></div>
         <div className="pgrid">{projetos.map((p) => { const [lbl, cls] = STATUS[p.status]; const impN = (anotacoes[p.id] || []).filter((n) => n.importante).length; const tot = (ambientesByProj[p.id] || []).reduce((s, a) => s + calc(a, COND).btu, 0); return (
-          <div key={p.id} className="pcard" onClick={() => abrir(p)} style={{ opacity: p.editavel ? 1 : .82 }}>
-            <div className="code">{p.codigo}</div><div className="nm">{p.nome}{impN > 0 && <span className="flagbadge">⚑ {impN}</span>}</div><div className="cl">{p.cliente} · {p.local}</div>
-            <div className="ft"><span className={"badge " + cls}>{lbl}</span><span className="mt">{tot ? fmt(tot) + " BTU/h" : (p.editavel ? "abrir p/ medir" : "—")}</span></div>
+          <div key={p.id} className="pcard" onClick={() => abrir(p)}>
+            <button className="pcard-del" title="Excluir obra" onClick={(e) => { e.stopPropagation(); if (window.confirm('Excluir a obra "' + p.nome + '"? Esta ação não pode ser desfeita.')) excluirProjeto(p.id); }}>×</button>
+            <div className="code">{p.codigo}</div><div className="nm">{p.nome}{impN > 0 && <span className="flagbadge">⚑ {impN}</span>}</div><div className="cl">{(p.cliente || "—") + " · " + (p.local || "—")}</div>
+            <div className="ft"><span className={"badge " + cls}>{lbl}</span><span className="mt">{tot ? fmt(tot) + " BTU/h" : "abrir p/ medir"}</span></div>
           </div>); })}</div>
-        <div className="toast" style={{ marginTop: 16 }}>Abra <b>Fazenda Boa Vista</b> — é o projeto com o editor ao vivo ligado.</div>
       </>)}
 
       {screen === "projeto" && proj && (<>
         <div onClick={() => setScreen("projetos")} className="crumb">◧ Projetos / {proj.codigo}</div>
-        <div className="top"><div className="h1">{proj.nome}</div><div style={{ fontFamily: "IBM Plex Mono", fontSize: 13, color: "var(--ink-soft)" }}>{ambientes.length} ambientes · {fmt(totalProj)} BTU/h · {(totalProj / 12000).toFixed(2)} TR</div></div>
+        <div className="top"><div style={{ minWidth: 0, flex: 1 }}><input className="proj-nome" value={proj.nome} onChange={(e) => updProjeto(proj.id, "nome", e.target.value)} /><input className="proj-cli" value={proj.cliente === "—" ? "" : proj.cliente} placeholder="Cliente" onChange={(e) => updProjeto(proj.id, "cliente", e.target.value)} /></div><div style={{ fontFamily: "IBM Plex Mono", fontSize: 13, color: "var(--ink-soft)", whiteSpace: "nowrap" }}>{ambientes.length} amb · {fmt(totalProj)} BTU/h · {(totalProj / 12000).toFixed(2)} TR</div></div>
         {(anotacoes[proj.id] || []).some((n) => n.importante) && (
           <div className="sig" onClick={() => setAba("anotacoes")}>
             <span className="ic">⚑</span>
@@ -884,8 +949,8 @@ export default function App() {
       </>)}
 
       {screen === "catalogo" && (<>
-        <div className="top"><div className="h1">Catálogo de equipamentos</div><button className="btn pri">+ Cadastrar</button></div>
-        <Catalogo />
+        <div className="top"><div className="h1">Catálogo de equipamentos</div></div>
+        <Catalogo catalogo={catalogo} setCatalogo={setCatalogo} />
       </>)}
     </div>
   </div>);
