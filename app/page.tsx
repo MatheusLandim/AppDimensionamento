@@ -129,6 +129,9 @@ const CSS = `
 .liadd:hover{background:var(--ice)}
 .amb-del{background:transparent;border:1px solid var(--line);color:var(--ink-soft);border-radius:6px;padding:6px 12px;font-family:'Inter';font-size:11.5px;cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s,background .2s}
 .amb-del:hover{border-color:var(--danger);color:var(--danger);background:rgba(229,113,95,.1)}
+.modelo-sug{display:flex;align-items:center;gap:10px;border:1px solid var(--primary);background:linear-gradient(90deg,rgba(111,191,224,.15),var(--card));border-radius:9px;padding:11px 14px;margin:12px 0;font-size:13.5px;color:var(--ink);line-height:1.45}
+.modelo-sug .mic{color:var(--primary-deep);font-size:15px;flex:0 0 auto}
+.modelo-sug .mmodel{font-family:'IBM Plex Mono';color:var(--primary-deep);font-size:15px}
 .edit{border:1px solid var(--line);background:var(--card)}
 .edit-h{padding:12px 15px;border-bottom:1.5px solid var(--ink);display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .edit-h .nm{font-family:'Sora';font-weight:600;font-size:16px}
@@ -393,8 +396,8 @@ function Ambientes({ ambientes, setAmbientes, cond, selId, setSelId }) {
       <div className="edit-h" style={{ display: "flex", alignItems: "center", gap: 12 }}><div style={{ minWidth: 0, flex: 1 }}><span className="nm">{sel.nome}</span><span className="tg">{sel.tag} · {tipoLabel} · <b style={{ color: "var(--primary-deep)", fontWeight: 600 }}>{modeloAtual}</b></span></div><button className="amb-del" onClick={excluir}>Excluir ambiente</button></div>
       <div className="form">
         <div className="fld"><label>Nome</label><input className="inp" value={sel.nome} onChange={setS("nome")} /></div>
-        <div className="fld"><label>Tipo de equipamento</label><select className="inp" value={sel.tipoEquip || "hiwall"} onChange={setTipoEquip}>{TIPOEQUIP.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></div>
-        <div className="fld"><label>Modelo (série)</label><input className="inp" value={modeloAtual} onChange={setS("modeloEquip")} /></div>
+        <div className="fld"><label>Tipo de equipamento</label><select className="inp" value={sel.tipoEquip || "hiwall"} onChange={setS("tipoEquip")}>{TIPOEQUIP.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></div>
+        <div className="fld"><label>Modelo (auto — edite p/ fixar)</label><input className="inp" value={modeloAtual} onChange={setS("modeloEquip")} /></div>
         <div className="fld"><label>Área (m²)</label><input className="inp" value={sel.area} onChange={setN("area")} /></div>
         <div className="fld"><label>Ocupação</label><input className="inp" value={sel.nPessoas} onChange={setN("nPessoas")} /></div>
         <div className="fld"><label>Atividade</label><select className="inp" value={sel.atividade} onChange={setS("atividade")}>{ATIV.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></div>
@@ -413,6 +416,7 @@ function Ambientes({ ambientes, setAmbientes, cond, selId, setSelId }) {
         <div className="rc"><div className="k">Densidade</div><div className="v" style={{ color: r.wm2 > 250 ? "var(--warn)" : "var(--ink)" }}>{r.wm2}</div><div className="u">W/m²</div></div>
         <div className="rc"><div className="k">Ar externo</div><div className="v">{r.vaz.toLocaleString("pt-BR")}</div><div className="u">L/s</div></div>
       </div>
+      <div className="modelo-sug"><span className="mic">◆</span><span>Modelo para <b>{fmt(r.btu)} BTU/h</b> ({tipoLabel}): <b className="mmodel">{modeloSugerido}</b>{r.btu > 47800 ? " — acima de ~48.000 BTU/h; avalie porte maior ou duas unidades." : ""}</span></div>
       <div className="brk">
         <div className="cl"><div className="ch" style={{ color: "var(--primary-deep)" }}><span>Sensível</span><span>{fmt(r.s)} W</span></div>{sp.map((p) => <div className="pr" key={p.n}><span>{p.n}</span><span className="pv">{fmt(p.w)}</span></div>)}</div>
         <div className="cl"><div className="ch" style={{ color: "var(--info)" }}><span>Latente</span><span>{fmt(r.l)} W</span></div>{lp.map((p) => <div className="pr" key={p.n}><span>{p.n}</span><span className="pv">{fmt(p.w)}</span></div>)}</div>
@@ -956,7 +960,7 @@ export default function App() {
         <button className={screen === "catalogo" ? "on" : ""} onClick={() => setScreen("catalogo")}>▤ Catálogo</button>
       </div>
       <div className="sb-bottom">
-        <div style={{ padding: "0 12px 8px" }}><div className={"synch " + (sync === "error" ? "err" : "on")} onClick={carregarNuvem} title="Toque para recarregar da nuvem"><span className="d"></span>{sync === "saving" ? "Sincronizando…" : sync === "error" ? "Erro ao sincronizar" : ultimaSync ? "Sincronizado às " + ultimaSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "Sincronizado"}</div><div style={{ fontSize: 9, color: "var(--ink-soft)", opacity: .55, marginTop: 6, textAlign: "center", fontFamily: "IBM Plex Mono", letterSpacing: ".05em" }}>Project Ar · v10 (modelo auto)</div></div>
+        <div style={{ padding: "0 12px 8px" }}><div className={"synch " + (sync === "error" ? "err" : "on")} onClick={carregarNuvem} title="Toque para recarregar da nuvem"><span className="d"></span>{sync === "saving" ? "Sincronizando…" : sync === "error" ? "Erro ao sincronizar" : ultimaSync ? "Sincronizado às " + ultimaSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "Sincronizado"}</div><div style={{ fontSize: 9, color: "var(--ink-soft)", opacity: .55, marginTop: 6, textAlign: "center", fontFamily: "IBM Plex Mono", letterSpacing: ".05em" }}>Project Ar · v11 (modelo ao vivo)</div></div>
         <div className="sb-user"><div className="av">{(usuario[0] || "U").toUpperCase()}</div><div style={{ marginLeft: 8, minWidth: 0, flex: 1 }}><div className="nm" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{usuario.split("@")[0] || "usuário"}</div><div className="rl">conectado</div></div><button className="themebtn" title="Alternar tema" onClick={() => setTema((t) => t === "dark" ? "light" : "dark")}>{tema === "dark" ? "☀" : "☾"}</button><button className="sair" onClick={async () => { await supabase.auth.signOut(); window.location.href = "/login"; }}>Sair</button></div>
       </div>
     </div>
