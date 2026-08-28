@@ -123,6 +123,8 @@ const CSS = `
 .li .dot{width:7px;height:7px;border-radius:50%}
 .liadd{padding:10px 12px;text-align:center;font-size:12.5px;color:var(--primary);cursor:pointer;font-family:'IBM Plex Mono'}
 .liadd:hover{background:var(--ice)}
+.amb-del{background:transparent;border:1px solid var(--line);color:var(--ink-soft);border-radius:6px;padding:6px 12px;font-family:'Inter';font-size:11.5px;cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s,background .2s}
+.amb-del:hover{border-color:var(--danger);color:var(--danger);background:rgba(229,113,95,.1)}
 .edit{border:1px solid var(--line);background:var(--card)}
 .edit-h{padding:12px 15px;border-bottom:1.5px solid var(--ink);display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .edit-h .nm{font-family:'Sora';font-weight:600;font-size:16px}
@@ -362,6 +364,12 @@ function Ambientes({ ambientes, setAmbientes, cond, selId, setSelId }) {
   if (!sel) return (<div className="md"><div><div className="list"><div className="liadd" onClick={novo}>+ novo ambiente</div></div></div><div className="edit"><div style={{ padding: "38px 22px", color: "var(--ink-soft)", fontSize: 13, textAlign: "center", lineHeight: 1.6 }}>Nenhum ambiente cadastrado nesta obra.<br />Toque em <b style={{ color: "var(--primary-deep)" }}>+ novo ambiente</b> para iniciar o levantamento.</div></div></div>);
   const r = calc(sel, cond);
   const sp = r.par.filter((p) => p.t === "S"), lp = r.par.filter((p) => p.t === "L");
+  const excluir = () => {
+    if (!window.confirm('Excluir o ambiente "' + sel.nome + '"? Esta ação não pode ser desfeita.')) return;
+    const resto = ambientes.filter((a) => a.id !== sel.id);
+    setAmbientes(resto);
+    setSelId(resto[0] ? resto[0].id : "");
+  };
   return (<div className="md">
     <div>
       <div className="list">
@@ -374,7 +382,7 @@ function Ambientes({ ambientes, setAmbientes, cond, selId, setSelId }) {
       </div>
     </div>
     <div className="edit">
-      <div className="edit-h"><span className="nm">{sel.nome}</span><span className="tg">{sel.tag} · {sel.ue} · seleção: {selUI(r.btu).m}</span></div>
+      <div className="edit-h" style={{ display: "flex", alignItems: "center", gap: 12 }}><div style={{ minWidth: 0, flex: 1 }}><span className="nm">{sel.nome}</span><span className="tg">{sel.tag} · {sel.ue} · seleção: {selUI(r.btu).m}</span></div><button className="amb-del" onClick={excluir}>Excluir ambiente</button></div>
       <div className="form">
         <div className="fld"><label>Nome</label><input className="inp" value={sel.nome} onChange={setS("nome")} /></div>
         <div className="fld"><label>Área (m²)</label><input className="inp" value={sel.area} onChange={setN("area")} /></div>
