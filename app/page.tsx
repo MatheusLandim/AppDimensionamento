@@ -282,6 +282,8 @@ table.t{width:100%;border-collapse:collapse;min-width:520px}
 .synch .d{width:8px;height:8px;border-radius:50%}
 .synch.on .d{background:var(--ok);box-shadow:0 0 6px var(--ok)}
 .synch.off .d{background:var(--warn)}
+.synch.err{border-color:var(--danger);color:var(--danger)}
+.synch.err .d{background:var(--danger);box-shadow:0 0 6px var(--danger)}
 @media(max-width:860px){.ag-add{grid-template-columns:1fr 1fr}}
 /* --- dimensionador de dutos (escopado) --- */
 .duct .modes{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:16px}
@@ -843,7 +845,8 @@ export default function App() {
   const [selId, setSelId] = useState("1.01");
   const [fotos, setFotos] = useState({});
   const [tema, setTema] = useState("dark");
-  const [online, setOnline] = useState(true);
+  const [sync, setSync] = useState("idle");
+  const [ultimaSync, setUltimaSync] = useState(null);
   const [catalogo, setCatalogo] = useState(CAT_SEED);
   const [catArquivos, setCatArquivos] = useState([]);
   const [visitas, setVisitas] = useState([
@@ -861,36 +864,46 @@ export default function App() {
   const [projetos, setProjetos] = useState(PROJETOS);
   const criarObra = (nome, cliente) => setProjetos((ps) => ps.some((p) => p.nome.toLowerCase() === nome.toLowerCase()) ? ps : [...ps, { id: "o" + Date.now(), nome, codigo: "OBRA-" + String(Date.now()).slice(-4), cliente: cliente || "—", local: "", status: "rascunho", editavel: true }]);
 
-  // Carrega sessão + estado do Supabase
+  // Puxa o estado da nuvem (usado no login e no botão de recarregar)
+  const carregarNuvem = async () => {
+    try {
+      const { data: row, error } = await supabase.from("app_estado").select("dados").eq("org", "projectar").maybeSingle();
+      if (error) { console.error("Sync — erro ao carregar:", error.message); setSync("error"); return; }
+      if (row && row.dados) {
+        const d = row.dados;
+        if (d.projetos) setProjetos(d.projetos);
+        if (d.ambientesByProj) setAmbientesByProj(d.ambientesByProj);
+        if (d.anotacoes) setAnotacoes(d.anotacoes);
+        if (d.visitas) setVisitas(d.visitas);
+        if (d.fotos) setFotos(d.fotos);
+        if (d.catalogo) setCatalogo(d.catalogo);
+        if (d.catArquivos) setCatArquivos(d.catArquivos);
+      }
+      setSync("saved"); setUltimaSync(new Date());
+    } catch (e) { console.error("Sync — falha ao carregar:", e); setSync("error"); }
+  };
+
+  // Carrega sessão + estado no login
   useEffect(() => {
     let alive = true;
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) { window.location.href = "/login"; return; }
       if (!alive) return;
       setUsuario(data.session.user.email || "");
-      try {
-        const { data: row } = await supabase.from("app_estado").select("dados").eq("org", "projectar").maybeSingle();
-        if (row && row.dados && alive) {
-          const d = row.dados;
-          if (d.projetos) setProjetos(d.projetos);
-          if (d.ambientesByProj) setAmbientesByProj(d.ambientesByProj);
-          if (d.anotacoes) setAnotacoes(d.anotacoes);
-          if (d.visitas) setVisitas(d.visitas);
-          if (d.fotos) setFotos(d.fotos);
-          if (d.catalogo) setCatalogo(d.catalogo);
-          if (d.catArquivos) setCatArquivos(d.catArquivos);
-        }
-      } catch (e) { /* estado inicial */ }
+      await carregarNuvem();
       if (alive) setLogado(true);
     });
     return () => { alive = false; };
   }, []);
 
-  // Salva estado (debounced)
+  // Salva na nuvem (debounced) com status visível
   useEffect(() => {
     if (!logado) return;
-    const t = setTimeout(() => {
-      supabase.from("app_estado").upsert({ org: "projectar", dados: { projetos, ambientesByProj, anotacoes, visitas, fotos, catalogo, catArquivos }, updated_at: new Date().toISOString() });
+    setSync("saving");
+    const t = setTimeout(async () => {
+      const { error } = await supabase.from("app_estado").upsert({ org: "projectar", dados: { projetos, ambientesByProj, anotacoes, visitas, fotos, catalogo, catArquivos }, updated_at: new Date().toISOString() }, { onConflict: "org" });
+      if (error) { console.error("Sync — erro ao salvar:", error.message); setSync("error"); }
+      else { setSync("saved"); setUltimaSync(new Date()); }
     }, 900);
     return () => clearTimeout(t);
   }, [projetos, ambientesByProj, anotacoes, visitas, fotos, catalogo, catArquivos, logado]);
@@ -925,7 +938,7 @@ export default function App() {
         <button className={screen === "catalogo" ? "on" : ""} onClick={() => setScreen("catalogo")}>▤ Catálogo</button>
       </div>
       <div className="sb-bottom">
-        <div style={{ padding: "0 12px 8px" }}><div className={"synch " + (online ? "on" : "off")} onClick={() => setOnline((o) => !o)} title="Toque para simular offline"><span className="d"></span>{online ? "Sincronizado" : "Offline — na fila"}</div></div>
+        <div style={{ padding: "0 12px 8px" }}><div className={"synch " + (sync === "error" ? "err" : "on")} onClick={carregarNuvem} title="Toque para recarregar da nuvem"><span className="d"></span>{sync === "saving" ? "Sincronizando…" : sync === "error" ? "Erro ao sincronizar" : ultimaSync ? "Sincronizado às " + ultimaSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "Sincronizado"}</div></div>
         <div className="sb-user"><div className="av">{(usuario[0] || "U").toUpperCase()}</div><div style={{ marginLeft: 8, minWidth: 0, flex: 1 }}><div className="nm" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{usuario.split("@")[0] || "usuário"}</div><div className="rl">conectado</div></div><button className="themebtn" title="Alternar tema" onClick={() => setTema((t) => t === "dark" ? "light" : "dark")}>{tema === "dark" ? "☀" : "☾"}</button><button className="sair" onClick={async () => { await supabase.auth.signOut(); window.location.href = "/login"; }}>Sair</button></div>
       </div>
     </div>
