@@ -71,6 +71,9 @@ const ATIV = [["repouso", "Repouso"], ["sentado_leve", "Sentado leve"], ["ativid
 const ORI = [["N", "Norte"], ["L", "Leste"], ["S", "Sul"], ["O", "Oeste"]];
 const CATEG = [["residencia", "Residência"], ["escritorio", "Escritório"], ["academia", "Academia"]];
 const TIPOEQUIP = [["dutada", "Dutada"], ["hiwall", "Hi-wall (parede)"], ["cassete", "Cassete 4 vias"], ["cassete1", "Cassete 1 via"], ["pisoteto", "Piso-teto"], ["built", "Built-in / K7"]];
+const SERIE = { dutada: "FXSQ", hiwall: "FXAQ", cassete: "FXFQ", cassete1: "FXKQ", pisoteto: "FXHQ", built: "FXDQ" };
+const SIZES = [[20, 6800], [25, 8500], [32, 10900], [40, 13600], [50, 17100], [63, 21500], [80, 27300], [100, 34100], [125, 42700], [140, 47800]];
+const sizeFor = (btu) => (SIZES.find((x) => x[1] >= btu) || SIZES[SIZES.length - 1])[0];
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
@@ -361,7 +364,7 @@ function Ambientes({ ambientes, setAmbientes, cond, selId, setSelId }) {
   const setF = (k, v) => setAmbientes(ambientes.map((a) => a.id === sel.id ? { ...a, [k]: v } : a));
   const setN = (k) => (e) => setF(k, num(e.target.value));
   const setS = (k) => (e) => setF(k, e.target.value);
-  const novo = () => { const id = "n" + Date.now(); setAmbientes([...ambientes, { id, tag: "—", nome: "Novo ambiente", ue: "UE-1", area: 20, peDireito: 2.8, nPessoas: 2, atividade: "atividade_moderada", categoria: "residencia", iluminacaoWm2: 10, equipamentosW: 200, paredeExtArea: 8, orientacao: "S", vidroArea: 3, coberturaExposta: false, tipoEquip: "hiwall" }]); setSelId(id); };
+  const novo = () => { const id = "n" + Date.now(); setAmbientes([...ambientes, { id, tag: "—", nome: "Novo ambiente", ue: "UE-1", area: 20, peDireito: 2.8, nPessoas: 2, atividade: "atividade_moderada", categoria: "residencia", iluminacaoWm2: 10, equipamentosW: 200, paredeExtArea: 8, orientacao: "S", vidroArea: 3, coberturaExposta: false, tipoEquip: "hiwall", modeloEquip: "" }]); setSelId(id); };
   if (!sel) return (<div className="md"><div><div className="list"><div className="liadd" onClick={novo}>+ novo ambiente</div></div></div><div className="edit"><div style={{ padding: "38px 22px", color: "var(--ink-soft)", fontSize: 13, textAlign: "center", lineHeight: 1.6 }}>Nenhum ambiente cadastrado nesta obra.<br />Toque em <b style={{ color: "var(--primary-deep)" }}>+ novo ambiente</b> para iniciar o levantamento.</div></div></div>);
   const r = calc(sel, cond);
   const sp = r.par.filter((p) => p.t === "S"), lp = r.par.filter((p) => p.t === "L");
@@ -372,6 +375,9 @@ function Ambientes({ ambientes, setAmbientes, cond, selId, setSelId }) {
     setSelId(resto[0] ? resto[0].id : "");
   };
   const tipoLabel = (TIPOEQUIP.find((x) => x[0] === (sel.tipoEquip || "hiwall")) || ["", "Hi-wall"])[1];
+  const modeloSugerido = (SERIE[sel.tipoEquip || "hiwall"] || "") + sizeFor(r.btu);
+  const modeloAtual = sel.modeloEquip || modeloSugerido;
+  const setTipoEquip = (e) => { const v = e.target.value; setAmbientes(ambientes.map((a) => a.id === sel.id ? { ...a, tipoEquip: v, modeloEquip: (SERIE[v] || "") + sizeFor(calc(a, cond).btu) } : a)); };
   return (<div className="md">
     <div>
       <div className="list">
@@ -384,10 +390,11 @@ function Ambientes({ ambientes, setAmbientes, cond, selId, setSelId }) {
       </div>
     </div>
     <div className="edit">
-      <div className="edit-h" style={{ display: "flex", alignItems: "center", gap: 12 }}><div style={{ minWidth: 0, flex: 1 }}><span className="nm">{sel.nome}</span><span className="tg">{sel.tag} · {sel.ue} · {tipoLabel} · seleção: {selUI(r.btu).m}</span></div><button className="amb-del" onClick={excluir}>Excluir ambiente</button></div>
+      <div className="edit-h" style={{ display: "flex", alignItems: "center", gap: 12 }}><div style={{ minWidth: 0, flex: 1 }}><span className="nm">{sel.nome}</span><span className="tg">{sel.tag} · {tipoLabel} · <b style={{ color: "var(--primary-deep)", fontWeight: 600 }}>{modeloAtual}</b></span></div><button className="amb-del" onClick={excluir}>Excluir ambiente</button></div>
       <div className="form">
         <div className="fld"><label>Nome</label><input className="inp" value={sel.nome} onChange={setS("nome")} /></div>
-        <div className="fld"><label>Tipo de equipamento</label><select className="inp" value={sel.tipoEquip || "hiwall"} onChange={setS("tipoEquip")}>{TIPOEQUIP.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></div>
+        <div className="fld"><label>Tipo de equipamento</label><select className="inp" value={sel.tipoEquip || "hiwall"} onChange={setTipoEquip}>{TIPOEQUIP.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></div>
+        <div className="fld"><label>Modelo (série)</label><input className="inp" value={modeloAtual} onChange={setS("modeloEquip")} /></div>
         <div className="fld"><label>Área (m²)</label><input className="inp" value={sel.area} onChange={setN("area")} /></div>
         <div className="fld"><label>Ocupação</label><input className="inp" value={sel.nPessoas} onChange={setN("nPessoas")} /></div>
         <div className="fld"><label>Atividade</label><select className="inp" value={sel.atividade} onChange={setS("atividade")}>{ATIV.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></div>
@@ -949,7 +956,7 @@ export default function App() {
         <button className={screen === "catalogo" ? "on" : ""} onClick={() => setScreen("catalogo")}>▤ Catálogo</button>
       </div>
       <div className="sb-bottom">
-        <div style={{ padding: "0 12px 8px" }}><div className={"synch " + (sync === "error" ? "err" : "on")} onClick={carregarNuvem} title="Toque para recarregar da nuvem"><span className="d"></span>{sync === "saving" ? "Sincronizando…" : sync === "error" ? "Erro ao sincronizar" : ultimaSync ? "Sincronizado às " + ultimaSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "Sincronizado"}</div><div style={{ fontSize: 9, color: "var(--ink-soft)", opacity: .55, marginTop: 6, textAlign: "center", fontFamily: "IBM Plex Mono", letterSpacing: ".05em" }}>Project Ar · v9 (tipo de equip.)</div></div>
+        <div style={{ padding: "0 12px 8px" }}><div className={"synch " + (sync === "error" ? "err" : "on")} onClick={carregarNuvem} title="Toque para recarregar da nuvem"><span className="d"></span>{sync === "saving" ? "Sincronizando…" : sync === "error" ? "Erro ao sincronizar" : ultimaSync ? "Sincronizado às " + ultimaSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "Sincronizado"}</div><div style={{ fontSize: 9, color: "var(--ink-soft)", opacity: .55, marginTop: 6, textAlign: "center", fontFamily: "IBM Plex Mono", letterSpacing: ".05em" }}>Project Ar · v10 (modelo auto)</div></div>
         <div className="sb-user"><div className="av">{(usuario[0] || "U").toUpperCase()}</div><div style={{ marginLeft: 8, minWidth: 0, flex: 1 }}><div className="nm" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{usuario.split("@")[0] || "usuário"}</div><div className="rl">conectado</div></div><button className="themebtn" title="Alternar tema" onClick={() => setTema((t) => t === "dark" ? "light" : "dark")}>{tema === "dark" ? "☀" : "☾"}</button><button className="sair" onClick={async () => { await supabase.auth.signOut(); window.location.href = "/login"; }}>Sair</button></div>
       </div>
     </div>
