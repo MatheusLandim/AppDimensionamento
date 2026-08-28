@@ -253,6 +253,14 @@ table.t{width:100%;border-collapse:collapse;min-width:520px}
 .cat-in:focus{outline:none;border-color:var(--primary);background:var(--card2)}
 .cat-rm{background:transparent;border:none;color:var(--ink-soft);cursor:pointer;font-size:15px}
 .cat-rm:hover{color:var(--danger)}
+.cat-up{display:inline-flex;align-items:center;gap:8px;font-family:'Sora';font-weight:600;font-size:13px;padding:11px 18px;border:1px dashed var(--line);border-radius:8px;color:var(--primary-deep);cursor:pointer;background:var(--card2);margin-bottom:12px;transition:border-color .2s,background .2s}
+.cat-up:hover{border-color:var(--primary);background:rgba(111,191,224,.08)}
+.cat-file{display:flex;align-items:center;gap:11px;border:1px solid var(--line);background:var(--card);border-radius:9px;padding:10px 13px;margin-bottom:8px;backdrop-filter:blur(12px)}
+.cat-file .fic{font-family:'IBM Plex Mono';font-size:10px;font-weight:600;color:#06243a;background:var(--primary);border-radius:4px;padding:3px 6px;letter-spacing:.03em}
+.cat-file .fnm{flex:1;font-size:13.5px;color:var(--ink);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-file .fnm:hover{color:var(--primary-deep);text-decoration:underline}
+.cat-file .fsz{font-family:'IBM Plex Mono';font-size:11px;color:var(--ink-soft);white-space:nowrap}
+.cat-empty{color:var(--ink-soft);font-size:13px;padding:16px;text-align:center;border:1px dashed var(--line);border-radius:9px}
 .flagbadge{font-family:'IBM Plex Mono';font-size:11px;color:var(--warn);border:1px solid var(--warn);border-radius:4px;padding:0 5px;margin-left:8px}
 /* --- agenda + offline --- */
 .ag-add{display:grid;grid-template-columns:1.2fr 1.2fr 1fr .9fr .7fr auto;gap:8px;align-items:end;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:12px;margin-bottom:16px;backdrop-filter:blur(12px)}
@@ -429,9 +437,21 @@ const CAT_SEED = [
   { id: "s4", tipo: "ui", fabricante: "Daikin", linha: "Cassete 4 vias", modelo: "FXFSQ40AVM", cap: 13600, maxUI: 0 },
   { id: "s5", tipo: "ui", fabricante: "Daikin", linha: "Cassete 4 vias", modelo: "FXFSQ63AVM", cap: 21500, maxUI: 0 },
 ];
-function Catalogo({ catalogo, setCatalogo }) {
+function Catalogo({ catalogo, setCatalogo, catArquivos, setCatArquivos }) {
   const [t, setT] = useState("ue");
   const [novo, setNovo] = useState({ fabricante: "", linha: "", modelo: "", cap: "", maxUI: "" });
+  const [subindo, setSubindo] = useState(false);
+  const upFile = async (e) => {
+    const files = Array.from(e.target.files || []);
+    setSubindo(true);
+    for (const f of files) {
+      const key = "catalogos/" + Date.now() + "-" + f.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const up = await supabase.storage.from("fotos").upload(key, f, { upsert: true });
+      if (!up.error) { const pub = supabase.storage.from("fotos").getPublicUrl(key); setCatArquivos((a) => [...a, { id: key, nome: f.name, url: pub.data.publicUrl, tamanho: f.size }]); }
+    }
+    setSubindo(false); e.target.value = "";
+  };
+  const rmFile = async (id) => { await supabase.storage.from("fotos").remove([id]); setCatArquivos((a) => a.filter((x) => x.id !== id)); };
   const lista = catalogo.filter((c) => c.tipo === t);
   const setN = (k) => (e) => setNovo({ ...novo, [k]: e.target.value });
   const add = () => {
@@ -467,6 +487,16 @@ function Catalogo({ catalogo, setCatalogo }) {
         </tr>
       ))}</tbody>
     </table></div>
+    <div className="toolsec" style={{ marginTop: 22 }}>Arquivos e datasheets dos fabricantes</div>
+    <label className="cat-up"><input type="file" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" multiple style={{ display: "none" }} onChange={upFile} />{subindo ? "Enviando…" : "＋ Enviar arquivo (PDF, planilha, imagem…)"}</label>
+    {catArquivos.length === 0 && <div className="cat-empty">Nenhum arquivo enviado ainda.</div>}
+    {catArquivos.map((f) => { const ext = (f.nome.split(".").pop() || "arq").toUpperCase().slice(0, 4); return (
+      <div className="cat-file" key={f.id}>
+        <span className="fic">{ext}</span>
+        <a href={f.url} target="_blank" rel="noreferrer" className="fnm">{f.nome}</a>
+        <span className="fsz">{(f.tamanho / 1048576).toFixed(1)} MB</span>
+        <button className="cat-rm" onClick={() => rmFile(f.id)}>×</button>
+      </div>); })}
   </>);
 }
 
@@ -815,6 +845,7 @@ export default function App() {
   const [tema, setTema] = useState("dark");
   const [online, setOnline] = useState(true);
   const [catalogo, setCatalogo] = useState(CAT_SEED);
+  const [catArquivos, setCatArquivos] = useState([]);
   const [visitas, setVisitas] = useState([
     { id: "v1", obra: "Fazenda Boa Vista", tipo: "medicao", data: "2026-08-27", hora: "09:00" },
     { id: "v2", obra: "Cobertura Vila Nova", tipo: "visita", data: "2026-08-27", hora: "14:30" },
@@ -847,6 +878,7 @@ export default function App() {
           if (d.visitas) setVisitas(d.visitas);
           if (d.fotos) setFotos(d.fotos);
           if (d.catalogo) setCatalogo(d.catalogo);
+          if (d.catArquivos) setCatArquivos(d.catArquivos);
         }
       } catch (e) { /* estado inicial */ }
       if (alive) setLogado(true);
@@ -858,10 +890,10 @@ export default function App() {
   useEffect(() => {
     if (!logado) return;
     const t = setTimeout(() => {
-      supabase.from("app_estado").upsert({ org: "projectar", dados: { projetos, ambientesByProj, anotacoes, visitas, fotos, catalogo }, updated_at: new Date().toISOString() });
+      supabase.from("app_estado").upsert({ org: "projectar", dados: { projetos, ambientesByProj, anotacoes, visitas, fotos, catalogo, catArquivos }, updated_at: new Date().toISOString() });
     }, 900);
     return () => clearTimeout(t);
-  }, [projetos, ambientesByProj, anotacoes, visitas, fotos, catalogo, logado]);
+  }, [projetos, ambientesByProj, anotacoes, visitas, fotos, catalogo, catArquivos, logado]);
   const proj = projetos.find((p) => p.id === projId);
   const ambientes = (proj && ambientesByProj[proj.id]) || [];
   const setAmbientes = (nl) => { if (proj) setAmbientesByProj((prev) => ({ ...prev, [proj.id]: typeof nl === "function" ? nl(prev[proj.id] || []) : nl })); };
@@ -950,7 +982,7 @@ export default function App() {
 
       {screen === "catalogo" && (<>
         <div className="top"><div className="h1">Catálogo de equipamentos</div></div>
-        <Catalogo catalogo={catalogo} setCatalogo={setCatalogo} />
+        <Catalogo catalogo={catalogo} setCatalogo={setCatalogo} catArquivos={catArquivos} setCatArquivos={setCatArquivos} />
       </>)}
     </div>
   </div>);
